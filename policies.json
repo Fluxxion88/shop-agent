@@ -1,0 +1,48 @@
+{
+  "categories": {
+    "Electronics": {
+      "return_window_days": 30,
+      "allowed_outcomes": ["refund", "replacement", "store_credit", "discount"],
+      "discount_cap_percent": 15,
+      "tiered_discounts": [
+        { "max_days": 7, "percent": 10 },
+        { "max_days": 30, "percent": 15 }
+      ],
+      "special_constraints": ["Must include proof of purchase for refunds."]
+    },
+    "Headphones & Audio": {
+      "return_window_days": 14,
+      "allowed_outcomes": ["replacement", "store_credit", "discount"],
+      "discount_cap_percent": 10,
+      "tiered_discounts": [
+        { "max_days": 7, "percent": 8 },
+        { "max_days": 14, "percent": 10 }
+      ],
+      "special_constraints": [
+        "Opened in-ear headphones are not eligible for refund due to hygiene."
+      ]
+    },
+    "Phones": {
+      "return_window_days": 21,
+      "allowed_outcomes": ["refund", "replacement", "store_credit", "discount"],
+      "discount_cap_percent": 12,
+      "tiered_discounts": [
+        { "max_days": 7, "percent": 10 },
+        { "max_days": 21, "percent": 12 }
+      ],
+      "special_constraints": [
+        "Device must have Find My/activation lock disabled for refund."
+      ]
+    },
+    "Furniture": {
+      "return_window_days": 45,
+      "allowed_outcomes": ["refund", "replacement", "store_credit", "discount"],
+      "discount_cap_percent": 20,
+      "tiered_discounts": [
+        { "max_days": 14, "percent": 15 },
+        { "max_days": 45, "percent": 20 }
+      ],
+      "special_constraints": ["Oversize pickup scheduling required for returns."]
+    }
+  }
+}
