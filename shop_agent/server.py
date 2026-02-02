@@ -45,4 +45,10 @@ async def chat_with_image(
     orchestrator.decide_policy(state)
     response = orchestrator.build_response(state, classification)
     save_session(state)
-    return JSONResponse({"response": response, "state": state.to_json(), "classification": classification})
+    return JSONResponse(
+        {
+            "response": response,
+            "state": state.to_json(),
+            "classification": classification.model_dump(),
+        }
+    )

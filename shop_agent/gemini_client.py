@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import json
 import os
-from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Optional, TypeVar
 
 from google import genai
 from google.genai import types
@@ -12,10 +10,7 @@ from google.genai import types
 MODEL_NAME = "gemini-2.5-flash"
 
 
-@dataclass
-class GeminiResult:
-    data: Dict[str, Any]
-    raw_text: str
+ModelT = TypeVar("ModelT")
 
 
 class GeminiClient:
@@ -25,34 +20,42 @@ class GeminiClient:
             raise RuntimeError("GEMINI_API_KEY environment variable is required.")
         self.client = genai.Client(api_key=key)
 
-    def generate_json(self, prompt: str, response_schema: Dict[str, Any]) -> GeminiResult:
+    def generate_json(self, prompt: str, schema_model: type[ModelT]) -> ModelT:
+        schema_dict = schema_model.model_json_schema()
         response = self.client.models.generate_content(
             model=MODEL_NAME,
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
-                response_schema=response_schema,
+                response_json_schema=schema_dict,
                 temperature=0.2,
             ),
         )
-        raw_text = response.text or ""
-        return GeminiResult(data=self._safe_json(raw_text), raw_text=raw_text)
+        raw_text = (response.text or "").strip()
+        try:
+            return schema_model.model_validate_json(raw_text)
+        except Exception as exc:  # pragma: no cover - depends on Gemini response
+            raise ValueError(f"Failed to parse structured output: {raw_text}") from exc
 
     def generate_json_with_image(
-        self, prompt: str, image_bytes: bytes, response_schema: Dict[str, Any]
-    ) -> GeminiResult:
+        self, prompt: str, image_bytes: bytes, schema_model: type[ModelT]
+    ) -> ModelT:
+        schema_dict = schema_model.model_json_schema()
         image_part = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
         response = self.client.models.generate_content(
             model=MODEL_NAME,
             contents=[prompt, image_part],
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
-                response_schema=response_schema,
+                response_json_schema=schema_dict,
                 temperature=0.2,
             ),
         )
-        raw_text = response.text or ""
-        return GeminiResult(data=self._safe_json(raw_text), raw_text=raw_text)
+        raw_text = (response.text or "").strip()
+        try:
+            return schema_model.model_validate_json(raw_text)
+        except Exception as exc:  # pragma: no cover - depends on Gemini response
+            raise ValueError(f"Failed to parse structured output: {raw_text}") from exc
 
     def generate_text(self, prompt: str) -> str:
         response = self.client.models.generate_content(
@@ -63,10 +66,3 @@ class GeminiClient:
             ),
         )
         return response.text or ""
-
-    @staticmethod
-    def _safe_json(raw_text: str) -> Dict[str, Any]:
-        try:
-            return json.loads(raw_text)
-        except json.JSONDecodeError:
-            return {}
