@@ -1,0 +1,20 @@
+[project]
+name = "shop-agent"
+version = "0.1.0"
+description = "Policy-safe AI agent for returns, refunds, and discounts."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.111.0",
+    "google-genai>=0.3.0",
+    "pydantic>=2.7.0",
+    "python-multipart>=0.0.9",
+    "uvicorn>=0.30.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
