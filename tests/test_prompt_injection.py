@@ -41,3 +41,15 @@ def test_injection_attempt_discount_allowed_outcomes_blocked():
         requested_discount=None,
     )
     assert outcome.eligible is False
+
+
+def test_injection_attempt_ignore_policy_refund():
+    engine = _engine()
+    outcome = engine.evaluate(
+        category="Electronics",
+        intent="refund",
+        days_since_purchase=90,
+        item_opened=False,
+        requested_discount=None,
+    )
+    assert outcome.eligible is False

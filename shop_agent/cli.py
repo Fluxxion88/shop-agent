@@ -20,15 +20,10 @@ def main() -> None:
     orchestrator = Orchestrator(gemini, policy_engine)
 
     state = load_session(args.session_id)
-    orchestrator.update_intent(state, args.message)
-
-    classification = None
+    image_bytes = None
     if args.image:
         image_bytes = open(args.image, "rb").read()
-        classification = orchestrator.update_classification(state, args.message, image_bytes)
-
-    orchestrator.decide_policy(state)
-    response = orchestrator.build_response(state, classification)
+    response = orchestrator.handle_turn(state, args.message, image_bytes=image_bytes)
     save_session(state)
     print(response)
 

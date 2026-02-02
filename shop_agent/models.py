@@ -20,3 +20,16 @@ class ImageClassification(BaseModel):
     confidence: float
     observations: str
     needs_clarification: bool
+
+
+class NLUUpdate(BaseModel):
+    user_goal: str | None = None
+    user_goal_summary: str | None = None
+    category: str | None = None
+    days_since_purchase: int | None = None
+    item_opened: bool | None = None
+    condition: str | None = None
+    purchase_price: float | None = None
+    amazon_asin: str | None = None
+    amazon_url: str | None = None
+    requested_discount: float | None = None

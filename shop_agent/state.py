@@ -19,6 +19,7 @@ class PolicyOutcome:
 class SessionState:
     session_id: str
     inferred_intent: str = "unknown"
+    user_goal: Optional[str] = None
     user_goal_summary: str = ""
     category: Optional[str] = None
     item_guess: Optional[str] = None
@@ -27,7 +28,14 @@ class SessionState:
     last_policy_outcome: Optional[PolicyOutcome] = None
     days_since_purchase: Optional[int] = None
     item_opened: Optional[bool] = None
+    condition: Optional[str] = None
+    purchase_price: Optional[float] = None
+    amazon_asin: Optional[str] = None
+    amazon_url: Optional[str] = None
     requested_discount: Optional[float] = None
+    asked_slots: List[str] = field(default_factory=list)
+    last_question_slot: Optional[str] = None
+    turn_count: int = 0
 
     def to_json(self) -> str:
         payload = asdict(self)
@@ -38,9 +46,15 @@ class SessionState:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SessionState":
         outcome = data.get("last_policy_outcome")
+        state = cls(session_id=data.get("session_id", "unknown"))
         if outcome:
-            data = {**data, "last_policy_outcome": PolicyOutcome(**outcome)}
-        return cls(**data)
+            state.last_policy_outcome = PolicyOutcome(**outcome)
+        for key, value in data.items():
+            if key == "last_policy_outcome":
+                continue
+            if hasattr(state, key):
+                setattr(state, key, value)
+        return state
 
 
 def session_path(session_id: str, base_dir: Path | None = None) -> Path:

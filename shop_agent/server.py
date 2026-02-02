@@ -24,9 +24,7 @@ def _build_orchestrator() -> Orchestrator:
 async def chat(session_id: str = Form(...), message: str = Form(...)) -> JSONResponse:
     orchestrator = _build_orchestrator()
     state = load_session(session_id)
-    orchestrator.update_intent(state, message)
-    orchestrator.decide_policy(state)
-    response = orchestrator.build_response(state)
+    response = orchestrator.handle_turn(state, message)
     save_session(state)
     return JSONResponse({"response": response, "state": state.to_json()})
 
@@ -39,16 +37,7 @@ async def chat_with_image(
 ) -> JSONResponse:
     orchestrator = _build_orchestrator()
     state = load_session(session_id)
-    orchestrator.update_intent(state, message)
     image_bytes = await image.read()
-    classification = orchestrator.update_classification(state, message, image_bytes)
-    orchestrator.decide_policy(state)
-    response = orchestrator.build_response(state, classification)
+    response = orchestrator.handle_turn(state, message, image_bytes=image_bytes)
     save_session(state)
-    return JSONResponse(
-        {
-            "response": response,
-            "state": state.to_json(),
-            "classification": classification.model_dump(),
-        }
-    )
+    return JSONResponse({"response": response, "state": state.to_json()})
