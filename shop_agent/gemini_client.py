@@ -20,7 +20,9 @@ class GeminiClient:
             raise RuntimeError("GEMINI_API_KEY environment variable is required.")
         self.client = genai.Client(api_key=key)
 
-    def generate_json(self, prompt: str, schema_model: type[ModelT]) -> ModelT:
+    def generate_json(
+        self, prompt: str, schema_model: type[ModelT], system_instruction: str | None = None
+    ) -> ModelT:
         schema_dict = schema_model.model_json_schema()
         response = self.client.models.generate_content(
             model=MODEL_NAME,
@@ -28,6 +30,7 @@ class GeminiClient:
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_json_schema=schema_dict,
+                system_instruction=system_instruction,
                 temperature=0.2,
             ),
         )
@@ -38,7 +41,11 @@ class GeminiClient:
             raise ValueError(f"Failed to parse structured output: {raw_text}") from exc
 
     def generate_json_with_image(
-        self, prompt: str, image_bytes: bytes, schema_model: type[ModelT]
+        self,
+        prompt: str,
+        image_bytes: bytes,
+        schema_model: type[ModelT],
+        system_instruction: str | None = None,
     ) -> ModelT:
         schema_dict = schema_model.model_json_schema()
         image_part = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
@@ -48,6 +55,7 @@ class GeminiClient:
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_json_schema=schema_dict,
+                system_instruction=system_instruction,
                 temperature=0.2,
             ),
         )

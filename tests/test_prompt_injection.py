@@ -1,55 +1,67 @@
-from pathlib import Path
-
-from shop_agent.policy import PolicyEngine
-
-
-def _engine() -> PolicyEngine:
-    return PolicyEngine.from_file(Path(__file__).resolve().parents[1] / "policies.json")
+from shop_agent.models import NLUUpdate
+from shop_agent.orchestrator import DialogManager
 
 
-def test_injection_attempt_discount_override_blocked():
-    engine = _engine()
-    outcome = engine.evaluate(
-        category="Electronics",
-        intent="discount",
-        days_since_purchase=5,
-        item_opened=False,
-        requested_discount=90,
-    )
-    assert outcome.discount_percent <= 15
+class FakeCase:
+    def __init__(self, **kwargs):
+        self.session_id = kwargs.get("session_id")
+        self.category = kwargs.get("category")
+        self.intent = kwargs.get("intent")
+        self.turn_count = kwargs.get("turn_count", 0)
+        self.last_question_slot = None
+        self.asked_slots = None
+        self.days_since_purchase = None
+        self.purchase_date_iso = None
+        self.furniture_assembled = None
+        self.electronics_defect_claimed = None
+        self.defect_evidence_present = None
+        self.emergency_trigger = None
+        self.retention_step = None
+        self.discount_percent = None
+        self.status = None
+        self.decision = None
+        self.reason = None
+        self.customer_name = None
+        self.pickup_address_json = None
+        self.customer_phone = None
 
 
-def test_injection_attempt_return_window_blocked():
-    engine = _engine()
-    outcome = engine.evaluate(
-        category="Phones",
-        intent="refund",
-        days_since_purchase=200,
-        item_opened=False,
-        requested_discount=None,
-    )
-    assert outcome.eligible is False
+class DummyGemini:
+    def __init__(self, nlu_update: NLUUpdate):
+        self.nlu_update = nlu_update
+
+    def generate_json(self, prompt, schema_model, system_instruction=None):
+        return self.nlu_update
+
+    def generate_json_with_image(self, prompt, image_bytes, schema_model, system_instruction=None):
+        raise AssertionError("Image not expected")
+
+    def generate_text(self, prompt: str) -> str:
+        return "Policy response."
 
 
-def test_injection_attempt_discount_allowed_outcomes_blocked():
-    engine = _engine()
-    outcome = engine.evaluate(
-        category="Headphones & Audio",
-        intent="refund",
-        days_since_purchase=5,
-        item_opened=True,
-        requested_discount=None,
-    )
-    assert outcome.eligible is False
+def test_discount_never_exceeds_20_with_threats():
+    case = FakeCase(session_id="s1", category="FOOD", intent="WANT_REFUND")
+    gemini = DummyGemini(NLUUpdate(emergency_trigger=True))
+    orch = DialogManager(gemini)
+    reply, _, _ = orch.handle_turn(case, "I will sue you and leave bad reviews.")
+    assert case.discount_percent <= 20
+    assert "20%" in reply or "20" in reply
 
 
-def test_injection_attempt_ignore_policy_refund():
-    engine = _engine()
-    outcome = engine.evaluate(
-        category="Electronics",
-        intent="refund",
-        days_since_purchase=90,
-        item_opened=False,
-        requested_discount=None,
-    )
-    assert outcome.eligible is False
+def test_food_always_retention():
+    case = FakeCase(session_id="s2", category="FOOD", intent="WANT_REFUND")
+    gemini = DummyGemini(NLUUpdate())
+    orch = DialogManager(gemini)
+    reply, _, _ = orch.handle_turn(case, "I want a refund")
+    assert case.decision == "retention"
+    assert "returns" in reply.lower() or "refund" in reply.lower()
+
+
+def test_turn_limit_enforced():
+    case = FakeCase(session_id="s3")
+    gemini = DummyGemini(NLUUpdate())
+    orch = DialogManager(gemini)
+    for _ in range(8):
+        reply, _, _ = orch.handle_turn(case, "I need help")
+    assert "one more detail" in reply.lower()

@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import argparse
 
+from shop_agent.db import Message, get_session, init_db
 from shop_agent.gemini_client import GeminiClient
-from shop_agent.orchestrator import Orchestrator
-from shop_agent.policy import PolicyEngine
-from shop_agent.state import load_session, save_session
+from shop_agent.orchestrator import DialogManager
 
 
 def main() -> None:
@@ -15,23 +14,33 @@ def main() -> None:
     parser.add_argument("--image", help="Path to image file", default=None)
     args = parser.parse_args()
 
+    init_db()
     gemini = GeminiClient()
-    policy_engine = PolicyEngine.from_file(path=__policy_path())
-    orchestrator = Orchestrator(gemini, policy_engine)
-
-    state = load_session(args.session_id)
+    orchestrator = DialogManager(gemini)
+    session = get_session()
+    case = session.query(__case_model()).filter_by(session_id=args.session_id).first()
+    if case is None:
+        case = __case_model()(session_id=args.session_id)
+        session.add(case)
+        session.commit()
+        session.refresh(case)
+    session.add(Message(case_id=case.id, role="user", text=args.message))
+    session.commit()
     image_bytes = None
     if args.image:
         image_bytes = open(args.image, "rb").read()
-    response = orchestrator.handle_turn(state, args.message, image_bytes=image_bytes)
-    save_session(state)
+    response, _, _ = orchestrator.handle_turn(case, args.message, image_bytes=image_bytes)
+    session.add(case)
+    session.commit()
+    session.add(Message(case_id=case.id, role="assistant", text=response))
+    session.commit()
     print(response)
 
 
-def __policy_path():
-    from pathlib import Path
+def __case_model():
+    from shop_agent.db import Case
 
-    return Path(__file__).resolve().parents[1] / "policies.json"
+    return Case
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # Shop Agent
 
-Policy-safe AI agent for returns, refunds, and discounts using Gemini.
+Policy-safe AI agent for returns, refunds, and discounts using Gemini with persistent storage.
 
 ## Requirements
 - macOS with Python 3.11+
@@ -17,56 +17,57 @@ pip install -e .[dev]
 ## Environment
 ```bash
 export GEMINI_API_KEY="your_key_here"
+export ADMIN_PASSWORD="your_admin_password"
+export CORS_ALLOWED_ORIGINS="https://your-lovable-app.com,http://localhost:3000"
+export DATABASE_URL="postgresql+psycopg://user:pass@host:5432/shop_agent"
 ```
 
-Optional Amazon PA-API credentials for price lookup:
-```bash
-export AMAZON_PAAPI_ACCESS_KEY="your_access_key"
-export AMAZON_PAAPI_SECRET_KEY="your_secret_key"
-export AMAZON_PAAPI_PARTNER_TAG="your_partner_tag"
-export AMAZON_PAAPI_HOST="webservices.amazon.com"
-export AMAZON_PAAPI_REGION="us-east-1"
-```
+If `DATABASE_URL` is not set, the app uses `sqlite:///./shop_agent.db`.
 
 ## Run CLI
 ```bash
-python -m shop_agent.cli demo-session "I want a refund for these headphones"
-python -m shop_agent.cli demo-session "Discount request for this chair" --image ./chair.jpg
-python -m shop_agent.cli demo-session "Unopened, bought 4 days ago"
+python -m shop_agent.cli demo-session "My furniture arrived broken"
+python -m shop_agent.cli demo-session "4 days"
+python -m shop_agent.cli demo-session "Not assembled"
 ```
 
 Example multi-turn CLI flow with image:
 ```bash
-python -m shop_agent.cli demo-session "I want a discount for this item" --image ./photo.jpg
-# Bot asks: "How many days ago did you buy it?"
+python -m shop_agent.cli demo-session "My electronics arrived broken" --image ./photo.jpg
+# Bot asks: "Do you have evidence of the defect (image/video or clear symptoms)?"
 python -m shop_agent.cli demo-session "4 days"
-# Bot asks: "Do you have the Amazon link or ASIN? If not, what was the purchase price?"
-python -m shop_agent.cli demo-session "ASIN B000123456"
-# Bot replies with a policy-capped discount decision.
+python -m shop_agent.cli demo-session "Not assembled"
+# Bot replies with a deterministic decision or asks for data collection.
 ```
 
 ## Run Server
 ```bash
-uvicorn shop_agent.server:app --reload
+uvicorn shop_agent.server:app --host 0.0.0.0 --port 8000
 ```
 
 ### Example requests
 Text-only:
 ```bash
-curl -X POST http://127.0.0.1:8000/chat \
-  -F session_id=demo-session \
-  -F message="I want a 25% discount on my phone"
+curl -X POST http://127.0.0.1:8000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"session_id":"demo-session","message":"My furniture arrived broken"}'
 ```
 
 Text + image:
 ```bash
-curl -X POST http://127.0.0.1:8000/chat_with_image \
+curl -X POST http://127.0.0.1:8000/api/chat-with-image \
   -F session_id=demo-session \
   -F message="This item arrived damaged, can I return it?" \
   -F image=@./photo.jpg
 ```
 
+## Admin API
+```bash
+curl -H "X-Admin-Password: $ADMIN_PASSWORD" http://127.0.0.1:8000/api/admin/cases
+curl -H "X-Admin-Password: $ADMIN_PASSWORD" http://127.0.0.1:8000/api/admin/cases/1
+```
+
 ## Notes
-- Policies are deterministic and enforced by `policies.json`.
-- If the image classifier returns confidence below 0.70 or needs clarification, the agent asks follow-up questions.
-- Price lookup uses Amazon PA-API when credentials are set; otherwise the agent asks for purchase price.
+- Decisions are deterministic and enforced by the decision tree in code.
+- The LLM only extracts structured facts and never decides eligibility or discounts.
+- The dialog manager enforces a max of 8 turns and avoids repeated questions.

@@ -1,21 +1,9 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
-
-
-class IntentExtraction(BaseModel):
-    inferred_intent: str = Field(
-        ..., description="One of refund, return, discount, replacement, unknown"
-    )
-    user_goal_summary: str
-    days_since_purchase: int | None
-    item_opened: bool | None
-    requested_discount: float | None
-    missing_info: list[str]
+from pydantic import BaseModel
 
 
 class ImageClassification(BaseModel):
-    item_name_guess: str
     category: str
     confidence: float
     observations: str
@@ -23,13 +11,13 @@ class ImageClassification(BaseModel):
 
 
 class NLUUpdate(BaseModel):
-    user_goal: str | None = None
-    user_goal_summary: str | None = None
     category: str | None = None
+    intent: str | None = None
+    requested_action: str | None = None
     days_since_purchase: int | None = None
-    item_opened: bool | None = None
-    condition: str | None = None
-    purchase_price: float | None = None
-    amazon_asin: str | None = None
-    amazon_url: str | None = None
-    requested_discount: float | None = None
+    purchase_date_iso: str | None = None
+    furniture_assembled: bool | None = None
+    electronics_defect_claimed: bool | None = None
+    defect_evidence_present: bool | None = None
+    user_sentiment: str | None = None
+    emergency_trigger: bool | None = None
